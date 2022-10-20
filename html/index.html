@@ -1,0 +1,68 @@
+<canvas width="1280" height="768"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/twgl.js/4.19.5/twgl-full.js"
+    integrity="sha512-/mAY2JuDIOa1rge2lZ6juKR0DeXDo0ig5/OtYXCfXUoOt6LPcetIwac+negUkKWnI9PqM6KLTPezHW7WVU/htw=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+    // https://stackoverflow.com/questions/39341564/webgl-how-to-correctly-blend-alpha-channel-png
+
+    let vs = `
+        attribute vec4 position;
+        varying vec2 v_texcoord;
+        uniform mat4 u_matrix;
+        void main() {
+            gl_Position = u_matrix * position;
+            v_texcoord = position.xy * .5 + .5;
+        }
+    `;
+
+    let fs = `
+        precision mediump float;
+        varying vec2 v_texcoord;
+        uniform sampler2D u_tex;
+        void main() {
+            gl_FragColor = texture2D(u_tex, v_texcoord);
+        }
+    `;
+
+    let gl = document.querySelector("canvas").getContext("webgl", { premultipliedAlpha: true, alpha: true });
+    let m4 = twgl.m4;
+    let programInfo = twgl.createProgramInfo(gl, [vs, fs]);
+    let bufferInfo = twgl.primitives.createXYQuadBufferInfo(gl);
+
+    (async () => {
+        let head, eye;
+        await new Promise(resolve => head = twgl.createTexture(gl, {
+            src: "./spineboy-head-pma.png",
+            crossOrigin: "",
+        }, resolve));
+        await new Promise(resolve => eye = twgl.createTexture(gl, {
+            src: "./spineboy-eye-pma.png",
+            crossOrigin: "",
+        }, resolve));
+
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+
+        gl.useProgram(programInfo.program);
+        twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo);
+
+        twgl.setUniforms(programInfo, {
+            u_tex: head,
+            u_matrix: m4.scaling([0.3, -0.5, 1]),
+        });
+        twgl.drawBufferInfo(gl, bufferInfo);
+
+        twgl.setUniforms(programInfo, {
+            u_tex: eye,
+            u_matrix: m4.scaling([0.3, -0.5, 1]),
+        });
+        twgl.drawBufferInfo(gl, bufferInfo);
+    })();
+</script>
+
+<style>
+    canvas {
+        background-color: gray;
+    }
+</style>
